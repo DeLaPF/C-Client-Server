@@ -35,6 +35,34 @@ void pushToList(struct node *head_ref, int data) {
 	new_node->next = temp_node;
 }
 
+int removeFromList(struct node *head_ref, int data) {
+	struct node *pre_node = head_ref;
+	struct node *cur_node = head_ref->next;
+	while(cur_node != NULL && cur_node->data != data) {
+		pre_node = cur_node;
+		cur_node = cur_node->next;
+	}
+	if (cur_node == NULL) {
+		return -1;
+	}
+
+	pre_node->next = cur_node->next;
+	cur_node->next = NULL;
+
+	return data;
+}
+
+void makeFDS(struct node *head_ref, fd_set *fds_ref) {
+	fd_set new_fds;
+	struct node *cur_node = head_ref->next;
+	while(cur_node != NULL) {
+		int data = cur_node->data;
+		FD_SET(data, &new_fds);
+		cur_node = cur_node->next;
+	}
+	*fds_ref = new_fds;
+}
+
 int main(int argc, char const *argv[])
 {
 	// Step 1: Set up socket
@@ -72,7 +100,6 @@ int main(int argc, char const *argv[])
 			int echoed = 0;
 			while (cur_node != NULL) {
 				int fd = cur_node->data;
-
 				if (FD_ISSET(fd, &read_fds)) {
 					printf("%s\n", "Echoing Data");
 					echoed = 1;
@@ -86,7 +113,8 @@ int main(int argc, char const *argv[])
 					if (recvd < 0)
 						error("ERROR data not sent");
 					close(fd);
-					FD_CLR(fd, &read_fds);
+					removeFromList(head, fd);
+					makeFDS(head, &read_fds);
 					FD_SET(sockfd, &read_fds);
 				}
 				cur_node = cur_node->next;
@@ -103,7 +131,8 @@ int main(int argc, char const *argv[])
 					error("ERROR receiving request");
 				FD_SET(remotefd, &read_fds);
 				maxsockfd = remotefd + 1;
-				pushToList(head, remotefd);
+				if (remotefd != sockfd)
+					pushToList(head, remotefd);
 				printf("%s\n", "Connection Accecpted");
 			}
 		}

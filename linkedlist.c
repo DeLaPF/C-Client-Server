@@ -23,6 +23,25 @@ void pushToList(struct node *head_ref, int data) {
 	new_node->next = temp_node;
 }
 
+//This implementaion is dangerous because it does not allow for a linked list with duplicate values
+//Made with the intention of beign used on file descriptors which should all have unique vals
+int removeFromList(struct node *head_ref, int data) {
+	struct node *pre_node = head_ref;
+	struct node *cur_node = head_ref->next;
+	while(cur_node != NULL && cur_node->data != data) {
+		pre_node = cur_node;
+		cur_node = cur_node->next;
+	}
+	if (cur_node == NULL) {
+		return -1;
+	}
+
+	pre_node->next = cur_node->next;
+	cur_node->next = NULL;
+
+	return data;
+}
+
 void printList(struct node *head_ref) {
 	struct node *cur_node = head_ref;
 	while(cur_node != NULL) {
@@ -39,6 +58,9 @@ int main(void) {
 		pushToList(head, i);
 
 	printList(head);
+	removeFromList(head, 4);
+	printList(head);
+
 	
 	return 0;
 }
