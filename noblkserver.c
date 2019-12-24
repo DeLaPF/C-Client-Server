@@ -36,6 +36,7 @@ void pushToList(struct node *head_ref, int data) {
 }
 
 int removeFromList(struct node *head_ref, int data) {
+	//Head value is expected to beset to 0 and ignored (only used as pointer)
 	struct node *pre_node = head_ref;
 	struct node *cur_node = head_ref->next;
 	while(cur_node != NULL && cur_node->data != data) {
@@ -48,6 +49,7 @@ int removeFromList(struct node *head_ref, int data) {
 
 	pre_node->next = cur_node->next;
 	cur_node->next = NULL;
+	free(cur_node);
 
 	return data;
 }
@@ -61,6 +63,19 @@ void makeFDS(struct node *head_ref, fd_set *fds_ref) {
 		cur_node = cur_node->next;
 	}
 	*fds_ref = new_fds;
+}
+
+int maxfd(int sockfd, struct node *head_ref) {
+	int max = sockfd;
+	struct node *cur_node = head_ref->next;
+	while(cur_node != NULL) {
+		int data = cur_node->data;
+		if (data > max)
+			max = data;
+		cur_node = cur_node->next;
+	}
+
+	return max + 1;
 }
 
 int main(int argc, char const *argv[])
@@ -90,9 +105,11 @@ int main(int argc, char const *argv[])
 	FD_SET(sockfd, &read_fds);
 	struct node *head = createList(0);
 
-	int maxsockfd = sockfd + 1;
 	while (1) {
 		printf("%s\n", "Attempting to Select . . .");
+		makeFDS(head, &read_fds);
+		FD_SET(sockfd, &read_fds);
+		int maxsockfd = maxfd(sockfd, head);
 		int selected = select(maxsockfd, &read_fds, NULL, NULL, NULL);
 		if (selected >= 0) {
 			printf("%s\n", "Connection Selected");
@@ -113,9 +130,8 @@ int main(int argc, char const *argv[])
 					if (recvd < 0)
 						error("ERROR data not sent");
 					close(fd);
-					removeFromList(head, fd);
-					makeFDS(head, &read_fds);
-					FD_SET(sockfd, &read_fds);
+					if (removeFromList(head, fd) == -1)
+						printf("%s\n", "could not remove from list");
 				}
 				cur_node = cur_node->next;
 			}
@@ -129,8 +145,6 @@ int main(int argc, char const *argv[])
 				int remotefd = accept(sockfd, remote_ptr, &remote_len);
 				if (remotefd < 0)
 					error("ERROR receiving request");
-				FD_SET(remotefd, &read_fds);
-				maxsockfd = remotefd + 1;
 				if (remotefd != sockfd)
 					pushToList(head, remotefd);
 				printf("%s\n", "Connection Accecpted");
