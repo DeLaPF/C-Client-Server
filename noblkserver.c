@@ -19,16 +19,16 @@ struct node {
 };
 
 struct node* createList(int data) {
-	int size_of_data = sizeof(data);
-	struct node *head = (struct node*) malloc(size_of_data);
+	int size_of_node = sizeof(struct node);
+	struct node *head = (struct node*) malloc(size_of_node);
 	head->data = data;
 	head->next = NULL;
 	return head;
 }
 
 void pushToList(struct node *head_ref, int data) {
-	int size_of_data = sizeof(data);
-	struct node *new_node = (struct node*) malloc(size_of_data);
+	int size_of_node = sizeof(struct node);
+	struct node *new_node = (struct node*) malloc(size_of_node);
 	new_node->data = data;
 	struct node *temp_node = head_ref->next;
 	head_ref->next = new_node;
