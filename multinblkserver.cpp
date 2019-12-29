@@ -11,6 +11,7 @@
 
 void handleConnnection(int sockfd, fd_set *read_fds_ref, struct node *head);
 bool wasEchoed(fd_set *read_fds_ref, struct node *head, bool *wasechoed);
+void accept(struct node *head, int sockfd);
 
 void error(const char *msg)
 {
@@ -71,21 +72,26 @@ void handleConnnection(int sockfd, fd_set *read_fds_ref, struct node *head) {
 				wasEchoed(read_fds_ref, head, &wasechoed);
     	}));
 
-		if (!wasechoed) {
-			// Step 4: Accecpt
-			struct sockaddr_in remote;
-			struct sockaddr *remote_ptr = (struct sockaddr*) &remote;
-			socklen_t remote_len = (socklen_t) sizeof(remote);
-			printf("%s\n", "Attempting to Accept . . .");
-			int remotefd = accept(sockfd, remote_ptr, &remote_len);
-			if (remotefd < 0)
-				error("ERROR receiving request");
-			if (remotefd != sockfd)
-				pushToList(head, remotefd);
-			printf("%s\n", "Connection Accecpted");
-		}
+		handles.emplace_back(thread_pool.enqueue([head, sockfd, &wasechoed]{
+			if (!wasechoed)
+				accept(head, sockfd);
+    	}));
 	}
 	else {error("ERROR Selection failed");}
+}
+
+void accept(struct node *head, int sockfd) {
+	// Step 4: Accecpt
+	struct sockaddr_in remote;
+	struct sockaddr *remote_ptr = (struct sockaddr*) &remote;
+	socklen_t remote_len = (socklen_t) sizeof(remote);
+	printf("%s\n", "Attempting to Accept . . .");
+	int remotefd = accept(sockfd, remote_ptr, &remote_len);
+	if (remotefd < 0)
+		error("ERROR receiving request");
+	if (remotefd != sockfd)
+		pushToList(head, remotefd);
+	printf("%s\n", "Connection Accecpted");
 }
 
 bool wasEchoed(fd_set *read_fds_ref, struct node *head, bool *wasechoed) {
