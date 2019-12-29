@@ -10,7 +10,8 @@
 #include "fdlist.h"
 
 void handleConnnection(int sockfd, fd_set *read_fds_ref, struct node *head);
-bool wasEchoed(fd_set *read_fds_ref, struct node *head, bool *wasechoed);
+bool wasEchoed(fd_set *read_fds_ref, struct node *head);
+void echo(fd_set *read_fds_ref, struct node *head, int fd);
 void accept(struct node *head, int sockfd);
 
 void error(const char *msg)
@@ -66,16 +67,8 @@ void handleConnnection(int sockfd, fd_set *read_fds_ref, struct node *head) {
 		printf("%s\n", "Connection Selected");
 		bool wasechoed = 1;
 
-		ThreadPool thread_pool(4);
-		std::vector<std::future<void>> handles;
-		handles.emplace_back(thread_pool.enqueue([read_fds_ref, head, &wasechoed]{
-				wasEchoed(read_fds_ref, head, &wasechoed);
-    	}));
-
-		handles.emplace_back(thread_pool.enqueue([head, sockfd, &wasechoed]{
-			if (!wasechoed)
-				accept(head, sockfd);
-    	}));
+		if (!wasEchoed(read_fds_ref, head))
+			accept(head, sockfd);
 	}
 	else {error("ERROR Selection failed");}
 }
@@ -94,29 +87,37 @@ void accept(struct node *head, int sockfd) {
 	printf("%s\n", "Connection Accecpted");
 }
 
-bool wasEchoed(fd_set *read_fds_ref, struct node *head, bool *wasechoed) {
+bool wasEchoed(fd_set *read_fds_ref, struct node *head) {
 	struct node *cur_node = head;
 	while (cur_node != NULL) {
 		int fd = cur_node->data;
 		if (FD_ISSET(fd, read_fds_ref)) {
 			printf("%s\n", "Echoing Data");
-			// Step 5: Echo
-			char buffer[256];
-			bzero(buffer, 256);
-			int recvd = recv(fd, buffer, 255, 0);
-			if (recvd < 0)
-				error("ERROR data not received");
-			int sent = send(fd, buffer, strlen(buffer), 0);
-			if (sent < 0)
-				error("ERROR data not sent");
-			close(fd);
-			removeFromList(head, fd);
-			FD_CLR(fd, read_fds_ref);
-			*wasechoed = 1;
+
+			ThreadPool thread_pool(4);
+			std::vector<std::future<void>> handles;
+			handles.emplace_back(thread_pool.enqueue([read_fds_ref, head, fd]{
+				echo(read_fds_ref, head, fd);
+	    	}));
+
 			return 1;
 		}
 		cur_node = cur_node->next;
 	}
-	*wasechoed = 0;
 	return 0;
+}
+
+void echo(fd_set *read_fds_ref, struct node *head, int fd) {
+	// Step 5: Echo
+	char buffer[256];
+	bzero(buffer, 256);
+	int recvd = recv(fd, buffer, 255, 0);
+	if (recvd < 0)
+		error("ERROR data not received");
+	int sent = send(fd, buffer, strlen(buffer), 0);
+	if (sent < 0)
+		error("ERROR data not sent");
+	close(fd);
+	removeFromList(head, fd);
+	FD_CLR(fd, read_fds_ref);
 }
