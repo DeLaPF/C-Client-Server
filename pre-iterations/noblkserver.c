@@ -56,13 +56,13 @@ int removeFromList(struct node *head_ref, int data) {
 
 void makeFDS(struct node *head_ref, fd_set *fds_ref) {
 	fd_set new_fds;
+	*fds_ref = new_fds;
 	struct node *cur_node = head_ref->next;
 	while(cur_node != NULL) {
 		int data = cur_node->data;
-		FD_SET(data, &new_fds);
+		FD_SET(data, fds_ref);
 		cur_node = cur_node->next;
 	}
-	*fds_ref = new_fds;
 }
 
 int maxfd(int sockfd, struct node *head_ref) {
@@ -130,8 +130,8 @@ int main(int argc, char const *argv[])
 					if (recvd < 0)
 						error("ERROR data not sent");
 					close(fd);
-					if (removeFromList(head, fd) == -1)
-						printf("%s\n", "could not remove from list");
+					removeFromList(head, fd);
+					FD_CLR(fd, &read_fds);
 				}
 				cur_node = cur_node->next;
 			}
