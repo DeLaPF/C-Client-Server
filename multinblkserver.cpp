@@ -8,7 +8,8 @@
 #include <netdb.h>
 #include "ThreadPool.h"
 
-int handleConnnection(int sockfd, fd_set *read_fds_ref, struct node *head);
+void handleConnnection(int sockfd, fd_set *read_fds_ref, struct node *head);
+bool wasEchoed(fd_set *read_fds_ref, struct node *head);
 
 void error(const char *msg)
 {
@@ -81,15 +82,6 @@ int maxfd(int sockfd, struct node *head_ref) {
 	return max + 1;
 }
 
-void printList(struct node *head_ref) {
-	struct node *cur_node = head_ref;
-	while(cur_node != NULL) {
-		int data = cur_node->data;
-		printf("%i\n", data);
-		cur_node = cur_node->next;
-	}
-}
-
 int main(int argc, char const *argv[])
 {
 	// Step 1: Set up socket
@@ -117,17 +109,8 @@ int main(int argc, char const *argv[])
 	FD_SET(sockfd, &read_fds);
 	struct node *head = createList(0);
 
-	ThreadPool thread_pool(4);
-	std::vector<std::future<void>> handles;
-
 	while (1) {
-		handles.emplace_back(
-			thread_pool.enqueue([sockfd, &read_fds, head]{
-        	handleConnnection(sockfd, &read_fds, head);
-    	}));
-    	for (auto &handle: handles) {
-		    handle.get();
-		}
+		handleConnnection(sockfd, &read_fds, head);
 	}
 
 	// Close the connection
@@ -136,55 +119,61 @@ int main(int argc, char const *argv[])
 	return 0;
 }
 
-int handleConnnection(int sockfd, fd_set *read_fds_ref, struct node *head) {
+void handleConnnection(int sockfd, fd_set *read_fds_ref, struct node *head) {
 	printf("%s\n", "Attempting to Select . . .");
-		fd_set read_fds = *read_fds_ref;
-		makeFDS(head, &read_fds);
-		FD_SET(sockfd, &read_fds);
-		int maxsockfd = maxfd(sockfd, head);
-		int selected = select(maxsockfd, &read_fds, NULL, NULL, NULL);
-		if (selected >= 0) {
-			printf("%s\n", "Connection Selected");
-			struct node *cur_node = head;
-			int echoed = 0;
-			while (cur_node != NULL) {
-				int fd = cur_node->data;
-				if (FD_ISSET(fd, &read_fds)) {
-					printf("%s\n", "Echoing Data");
-					echoed = 1;
-					// Step 5: Echo
-					char buffer[256];
-					bzero(buffer, 256);
-					int recvd = recv(fd, buffer, 255, 0);
-					if (recvd < 0)
-						error("ERROR data not received");
-					int sent = send(fd, buffer, strlen(buffer), 0);
-					if (recvd < 0)
-						error("ERROR data not sent");
-					close(fd);
-					if (removeFromList(head, fd) == -1)
-						return -1;
-					FD_CLR(fd, read_fds_ref);
-				}
-				cur_node = cur_node->next;
-			}
+	makeFDS(head, read_fds_ref);
+	FD_SET(sockfd, read_fds_ref);
+	int maxsockfd = maxfd(sockfd, head);
+	int selected = select(maxsockfd, read_fds_ref, NULL, NULL, NULL);
+	if (selected >= 0) {
+		printf("%s\n", "Connection Selected");
+		bool wasechoed;
 
-			if (echoed == 0) {
-				// Step 4: Accecpt
-				struct sockaddr_in remote;
-				struct sockaddr *remote_ptr = (struct sockaddr*) &remote;
-				socklen_t remote_len = (socklen_t) sizeof(remote);
-				printf("%s\n", "Attempting to Accept . . .");
-				int remotefd = accept(sockfd, remote_ptr, &remote_len);
-				if (remotefd < 0)
-					error("ERROR receiving request");
-				if (remotefd != sockfd)
-					pushToList(head, remotefd);
-				printf("%s\n", "Connection Accecpted");
-			}
+		ThreadPool thread_pool(4);
+		std::vector<std::future<void>> handles;
+		handles.emplace_back(
+			thread_pool.enqueue([read_fds_ref, head, &wasechoed]{
+				wasechoed = wasEchoed(read_fds_ref, head);
+    	}));
+
+		if (!wasechoed) {
+			// Step 4: Accecpt
+			struct sockaddr_in remote;
+			struct sockaddr *remote_ptr = (struct sockaddr*) &remote;
+			socklen_t remote_len = (socklen_t) sizeof(remote);
+			printf("%s\n", "Attempting to Accept . . .");
+			int remotefd = accept(sockfd, remote_ptr, &remote_len);
+			if (remotefd < 0)
+				error("ERROR receiving request");
+			if (remotefd != sockfd)
+				pushToList(head, remotefd);
+			printf("%s\n", "Connection Accecpted");
 		}
-		else {//printf("%s\n", "Selection failed")
-			printList(head);
-			return -1;}
-		return 0;
+	}
+	else {error("ERROR Selection failed");}
+}
+
+bool wasEchoed(fd_set *read_fds_ref, struct node *head) {
+	struct node *cur_node = head;
+	while (cur_node != NULL) {
+		int fd = cur_node->data;
+		if (FD_ISSET(fd, read_fds_ref)) {
+			printf("%s\n", "Echoing Data");
+			// Step 5: Echo
+			char buffer[256];
+			bzero(buffer, 256);
+			int recvd = recv(fd, buffer, 255, 0);
+			if (recvd < 0)
+				error("ERROR data not received");
+			int sent = send(fd, buffer, strlen(buffer), 0);
+			if (sent < 0)
+				error("ERROR data not sent");
+			close(fd);
+			removeFromList(head, fd);
+			FD_CLR(fd, read_fds_ref);
+			return 1;
+		}
+		cur_node = cur_node->next;
+	}
+	return 0;
 }
