@@ -10,7 +10,7 @@
 #include "fdlist.h"
 
 void handleConnnection(int sockfd, fd_set *read_fds_ref, struct node *head);
-bool wasEchoed(fd_set *read_fds_ref, struct node *head);
+bool wasEchoed(fd_set *read_fds_ref, struct node *head, bool *wasechoed);
 
 void error(const char *msg)
 {
@@ -63,12 +63,12 @@ void handleConnnection(int sockfd, fd_set *read_fds_ref, struct node *head) {
 	int selected = select(maxsockfd, read_fds_ref, NULL, NULL, NULL);
 	if (selected >= 0) {
 		printf("%s\n", "Connection Selected");
-		bool wasechoed;
+		bool wasechoed = 1;
 
 		ThreadPool thread_pool(4);
 		std::vector<std::future<void>> handles;
 		handles.emplace_back(thread_pool.enqueue([read_fds_ref, head, &wasechoed]{
-				wasechoed = wasEchoed(read_fds_ref, head);
+				wasEchoed(read_fds_ref, head, &wasechoed);
     	}));
 
 		if (!wasechoed) {
@@ -88,7 +88,7 @@ void handleConnnection(int sockfd, fd_set *read_fds_ref, struct node *head) {
 	else {error("ERROR Selection failed");}
 }
 
-bool wasEchoed(fd_set *read_fds_ref, struct node *head) {
+bool wasEchoed(fd_set *read_fds_ref, struct node *head, bool *wasechoed) {
 	struct node *cur_node = head;
 	while (cur_node != NULL) {
 		int fd = cur_node->data;
@@ -106,9 +106,11 @@ bool wasEchoed(fd_set *read_fds_ref, struct node *head) {
 			close(fd);
 			removeFromList(head, fd);
 			FD_CLR(fd, read_fds_ref);
+			*wasechoed = 1;
 			return 1;
 		}
 		cur_node = cur_node->next;
 	}
+	*wasechoed = 0;
 	return 0;
 }
