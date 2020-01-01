@@ -11,6 +11,8 @@
 #include <functional>
 #include <stdexcept>
 
+//https://github.com/progschj/ThreadPool
+
 class ThreadPool {
 public:
     ThreadPool(size_t);
