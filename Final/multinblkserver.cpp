@@ -35,25 +35,24 @@ int main(int argc, char const *argv[])
     host.sin_port = htons(PORT_NO); // bound to port 8080
     host.sin_addr.s_addr = INADDR_ANY; // connected to localhost
     const struct sockaddr *host_ptr = (struct sockaddr *) &host;
-    int bound = bind(sockfd, host_ptr, sizeof(host)); // bind sockfd to port
-    if (bound < 0)
+    // bind sockfd to port
+    if (bind(sockfd, host_ptr, sizeof(host)) < 0)
         error("ERROR binding to socket");
 
     // Step 3: Listen
-    int listening = listen(sockfd, BACKLOG_SIZE); // The socket will actively listen for incoming connections and queue them up
-    if (listening < 0)
+    if (listen(sockfd, BACKLOG_SIZE) < 0) // The socket will actively listen for incoming connections and queue them up
         error("ERROR listener failed");
 
     ThreadPool thread_pool(4); // create threadpool of size 4
     LinkedList *open_conn_fds = new LinkedList();
-    while (1)
+    while (true)
     {
         // Reset read_fds
         fd_set read_fds;
         FD_ZERO(&read_fds);
         FD_SET(sockfd, &read_fds);
         int maxfd = 0;
-        for (node *open_conn_fd = open_conn_fds->begin(); open_conn_fd; open_conn_fd = open_conn_fd->next)
+        for (node *open_conn_fd = open_conn_fds->begin(); open_conn_fd != open_conn_fds->end(); open_conn_fd = open_conn_fd->next)
         {
             int data = open_conn_fd->data;
             FD_SET(data, &read_fds); // populate read_fds from open_conn_fds
@@ -86,7 +85,7 @@ int main(int argc, char const *argv[])
 void handle_connection(fd_set read_fds, LinkedList *open_conn_fds, ThreadPool *thread_pool)
 {
     int fd;
-    for (node *open_conn_fd = open_conn_fds->begin(); open_conn_fd; open_conn_fd = open_conn_fd->next)  // iterate through fdlist
+    for (node *open_conn_fd = open_conn_fds->begin(); open_conn_fd != open_conn_fds->end(); open_conn_fd = open_conn_fd->next)  // iterate through fdlist
     {
         fd = open_conn_fd->data;
         if (FD_ISSET(fd, &read_fds))   // check if file descriptor is ready to be read from
@@ -95,8 +94,9 @@ void handle_connection(fd_set read_fds, LinkedList *open_conn_fds, ThreadPool *t
     std::cout << "Echoing Data" << std::endl;
     open_conn_fds->remove(fd);
 
-    thread_pool->enqueue([fd] {
-    	echo(fd); // echo data from fd (section to change for different server functionality)
+    thread_pool->enqueue([fd]
+    {
+        echo(fd); // echo data from fd (section to change for different server functionality)
     });
 }
 

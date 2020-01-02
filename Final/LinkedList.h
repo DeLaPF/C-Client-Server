@@ -19,7 +19,7 @@ public:
     void remove(int data);
 
     // Exposed to allow for easy iteration through the linked list:
-    // for (node *cur = list.begin(); cur; cur = cur->next) {
+    // for (node *cur = list.begin(); cur != list.end(); cur = cur->next) {
     //     // Do something
     // }
     node *begin();
