@@ -40,7 +40,7 @@ void LinkedList::remove(int data)
         pre = cur;
         cur = cur->next;
     }
-    if (cur == sentinel)
+    if (!cur || cur == sentinel)
         return;
     if (cur == head)
         head = cur->next;

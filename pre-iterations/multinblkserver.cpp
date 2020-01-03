@@ -80,6 +80,21 @@ int main(int argc, char const *argv[])
     return 0;
 }
 
+//Pre: sockfd is the socket bound to this server
+//Post: accept connection and add file descriptor of connected client to open_conn_fds
+void accept_connection(int sockfd, LinkedList *open_conn_fds)
+{
+    // Step 4: Accecpt
+    struct sockaddr_in remote_host; // a pointer to a sockaddr struct that will be filled in with the address information of the remote host
+    socklen_t remote_len = sizeof(remote_host); // the size of the sockaddr struct in bytes
+    std::cout << "Attempting to Accept . . ." << std::endl;
+    int remotefd = accept(sockfd, (struct sockaddr *) &remote_host, &remote_len); // dequeue from sockfd and accept connection through remotefd
+    if (remotefd < 0)
+        error("ERROR accepting request");
+    std::cout << "Connection Accecpted" << std::endl;
+    open_conn_fds->push(remotefd);
+}
+
 //Pre: open_conn_fds contains fd that is also in with read_fds
 //Post: determine which fd has been updated and echo data
 void handle_connection(fd_set read_fds, LinkedList *open_conn_fds, ThreadPool *thread_pool)
@@ -98,21 +113,6 @@ void handle_connection(fd_set read_fds, LinkedList *open_conn_fds, ThreadPool *t
     {
         echo(fd); // echo data from fd (section to change for different server functionality)
     });
-}
-
-//Pre: sockfd is the socket bound to this server
-//Post: accept connection and add file descriptor of connected client to open_conn_fds
-void accept_connection(int sockfd, LinkedList *open_conn_fds)
-{
-    // Step 4: Accecpt
-    struct sockaddr_in remote_host; // a pointer to a sockaddr struct that will be filled in with the address information of the remote host
-    socklen_t remote_len = sizeof(remote_host); // the size of the sockaddr struct in bytes
-    std::cout << "Attempting to Accept . . ." << std::endl;
-    int remotefd = accept(sockfd, (struct sockaddr *) &remote_host, &remote_len); // dequeue from sockfd and accept connection through remotefd
-    if (remotefd < 0)
-        error("ERROR accepting request");
-    std::cout << "Connection Accecpted" << std::endl;
-    open_conn_fds->push(remotefd);
 }
 
 //Pre: fd is a valid file descritor of a client that has sent data to the server
