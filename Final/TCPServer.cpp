@@ -1,19 +1,19 @@
 #include "TCPServer.h"
 
 #include "ThreadPool.h"
-#include "LinkedList.h"
+#include "SyncLinkedList.h"
 
-// Create linked list
 TCPServer::TCPServer(size_t max_concurrency)
 {
     thread_pool = new ThreadPool(max_concurrency);
-    open_conns = new LinkedList();
+    open_conns = new SyncLinkedList();
 }
 
-// Clean up nodes
 TCPServer::~TCPServer()
 {
     close(sock_fd);
+    open_conns->~SyncLinkedList();
+    free(thread_pool);
 }
 
 void TCPServer::listen_and_serve(size_t port, std::function<bool (int)> handler)
@@ -44,13 +44,14 @@ void TCPServer::listen_and_serve(size_t port, std::function<bool (int)> handler)
         FD_ZERO(&read_fds);
         FD_SET(sock_fd, &read_fds);
         int maxfd = 0;
-        for (node *open_conn_fd = open_conns->begin(); open_conn_fd != open_conns->end(); open_conn_fd = open_conn_fd->next)
-        {
-            int data = open_conn_fd->data;
+        std::function<bool (node *)> iter_full = [&read_fds, &maxfd] (node *cur) {
+            int data = cur->data;
             FD_SET(data, &read_fds); // populate read_fds from open_conns
             if (data > maxfd) // calculate maxfd
                 maxfd = data;
-        }
+            return true;
+        };
+        open_conns->for_each(iter_full); // iterate through entire list
 
         if (sock_fd > maxfd)
             maxfd = sock_fd;
@@ -61,19 +62,15 @@ void TCPServer::listen_and_serve(size_t port, std::function<bool (int)> handler)
         std::cout << "Connection Selected" << std::endl;
 
         if (FD_ISSET(sock_fd, &read_fds))
-            accept_connection(sock_fd, open_conns);
+            accept_connection();
         else
-            handle_connection(read_fds, open_conns, handler);
+            handle_connection(read_fds, handler);
     }
-
-    // Close the connection
-    std::cout << "Closing the connection" << std::endl;
-    close(sock_fd);
 }
 
 //Pre: sock_fd is the socket bound to this server
 //Post: accept connection and add file descriptor of connected client to open_conns
-void TCPServer::accept_connection(int sock_fd, LinkedList *open_conns)
+void TCPServer::accept_connection()
 {
     // Step 4: Accecpt
     struct sockaddr_in remote_host; // a pointer to a sockaddr struct that will be filled in with the address information of the remote host
@@ -88,21 +85,31 @@ void TCPServer::accept_connection(int sock_fd, LinkedList *open_conns)
 
 //Pre: open_conns contains fd that is also in with read_fds
 //Post: determine which fd has been updated and echo data
-void TCPServer::handle_connection(fd_set read_fds, LinkedList *open_conns, std::function<bool (int)> handler)
+void TCPServer::handle_connection(fd_set read_fds, std::function<bool (int)> handler)
 {
     int fd;
-    for (node *open_conn_fd = open_conns->begin(); open_conn_fd != open_conns->end(); open_conn_fd = open_conn_fd->next)  // iterate through fdlist
-    {
-        fd = open_conn_fd->data;
-        if (FD_ISSET(fd, &read_fds))   // check if file descriptor is ready to be read from
-            break;
-    }
+    std::function<bool (node *)> iter_search = [read_fds, &fd] (node *cur){
+        if (FD_ISSET(cur->data, &read_fds)) { // check if file descriptor is ready to be read from
+            fd = cur->data;
+            return false;
+        }
+        return true;
+    };
+    open_conns->for_each(iter_search);  // iterate through fdlist
+
+    if(!fd)
+        error("Connection not in list");
+
     std::cout << "Handeling Received Data" << std::endl;
 
-    thread_pool->enqueue([fd, handler, open_conns]
+    open_conns->remove(fd); //avoid race conditon of fd being checked against twice if handler is a slow enough funtion
+
+    thread_pool->enqueue([fd, handler]
     {
         if(handler(fd))
-            open_conns->remove(fd);
+            close(fd);
+        else
+            open_conns->push(fd);
     });
 }
 

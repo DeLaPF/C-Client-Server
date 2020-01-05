@@ -22,10 +22,11 @@ bool echo_handler(int fd)
     return true;
 }
 
-int main() {
-	TCPServer server(4);
+int main()
+{
+    TCPServer server(4);
 
     server.listen_and_serve(8080, echo_handler);
 
-	return 0;
+    return 0;
 }

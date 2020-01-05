@@ -11,6 +11,7 @@
 #include <iostream>
 
 class ThreadPool; // Forward declare class dependencies in header file
+class SyncLinkedList;
 class LinkedList;
 
 class TCPServer {
@@ -27,11 +28,11 @@ public:
 private:
     const int BACKLOG_SIZE = 2;
     int sock_fd;
-    LinkedList *open_conns;
+    static SyncLinkedList *open_conns;
     ThreadPool *thread_pool;
 
-    void handle_connection(fd_set read_fds, LinkedList *open_conn_fds, std::function<bool (int)> handler);
-    void accept_connection(int sockfd, LinkedList *open_conn_fds);
+    void handle_connection(fd_set read_fds, std::function<bool (int)> handler);
+    void accept_connection();
     void error(const char *msg);
 };
 
