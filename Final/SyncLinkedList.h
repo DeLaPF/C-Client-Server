@@ -4,9 +4,9 @@
 #include <shared_mutex>
 #include <mutex>
 #include <functional>
+#include "LinkedList.h"
 
 class LinkedList;
-struct node;
 
 class SyncLinkedList {
 public:

@@ -1,7 +1,5 @@
 #include "SyncLinkedList.h"
 
-#include "LinkedList.h"
-
 // Constructor
 SyncLinkedList::SyncLinkedList() {
     linked_list = new LinkedList();

@@ -103,14 +103,16 @@ void TCPServer::handle_connection(fd_set read_fds, std::function<bool (int)> han
     std::cout << "Handeling Received Data" << std::endl;
 
     open_conns->remove(fd); //avoid race conditon of fd being checked against twice if handler is a slow enough funtion
-
-    thread_pool->enqueue([fd, handler]
+    bool add_back = false;
+    thread_pool->enqueue([fd, handler, &add_back]
     {
         if(handler(fd))
             close(fd);
         else
-            open_conns->push(fd);
+            add_back = true;
     });
+    if (add_back) 
+        open_conns->push(fd);
 }
 
 void TCPServer::error(const char *msg)

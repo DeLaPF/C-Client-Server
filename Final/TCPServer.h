@@ -28,7 +28,7 @@ public:
 private:
     const int BACKLOG_SIZE = 2;
     int sock_fd;
-    static SyncLinkedList *open_conns;
+    SyncLinkedList *open_conns;
     ThreadPool *thread_pool;
 
     void handle_connection(fd_set read_fds, std::function<bool (int)> handler);
