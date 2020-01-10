@@ -2,7 +2,7 @@
 #define TCP_SERVER_H
 
 #include "thread_pool.h"
-#include "SyncLinkedList.h"
+#include "sync_linked_list.h"
 
 #include <unistd.h>
 #include <string.h>
@@ -40,7 +40,7 @@ namespace dlpf::net::tcp {
     private:
       const int BACKLOG_SIZE = 2;
       int sock_fd;
-      SyncLinkedList open_conns;
+      dlpf::sync::sync_linked_list open_conns;
       dlpf::async::thread_pool thread_pool;
 
       void accept_connection();

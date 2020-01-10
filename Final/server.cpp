@@ -33,7 +33,7 @@ void dlpf::net::tcp::server::listen_and_serve(size_t port, std::function<bool (i
         FD_ZERO(&read_fds);
         FD_SET(sock_fd, &read_fds);
         int maxfd = 0;
-        std::function<bool (node *)> iter_full = [&read_fds, &maxfd] (node *cur) {
+        std::function<bool (dlpf::sync::node *)> iter_full = [&read_fds, &maxfd] (dlpf::sync::node *cur) {
             int data = cur->data;
             FD_SET(data, &read_fds); // populate read_fds from open_conns
             if (data > maxfd) // calculate maxfd
@@ -77,7 +77,7 @@ void dlpf::net::tcp::server::accept_connection()
 void dlpf::net::tcp::server::handle_connection(fd_set read_fds, std::function<bool (int)> handler)
 {
     int fd = -1;
-    std::function<bool (node *)> iter_search = [read_fds, &fd] (node *cur){
+    std::function<bool (dlpf::sync::node *)> iter_search = [read_fds, &fd] (dlpf::sync::node *cur){
         if (FD_ISSET(cur->data, &read_fds)) { // check if file descriptor is ready to be read from
             fd = cur->data;
             return false;
