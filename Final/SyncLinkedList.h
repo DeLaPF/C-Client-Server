@@ -11,7 +11,7 @@ class LinkedList;
 class SyncLinkedList {
 public:
     // Constructor
-    SyncLinkedList();
+    SyncLinkedList():linked_list(){};
     // Destructor
     ~SyncLinkedList();
 
@@ -24,7 +24,7 @@ public:
     // If the iter handler returns false, the iteration will stop.
     void for_each(std::function<bool (node *)> iter);
 private:
-    LinkedList *linked_list;
+    LinkedList linked_list;
     std::shared_mutex rwm; 
 };
 

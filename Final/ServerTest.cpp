@@ -1,4 +1,4 @@
-#include "TCPServer.h"
+#include "server.h"
 
 void error(const char *msg)
 {
@@ -24,7 +24,7 @@ bool echo_handler(int fd)
 
 int main()
 {
-    TCPServer server(4);
+    dlpf::net::tcp::server server(4);
 
     server.listen_and_serve(8080, echo_handler);
 

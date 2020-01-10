@@ -1,22 +1,11 @@
-#include "TCPServer.h"
+#include "server.h"
 
-#include "ThreadPool.h"
-#include "SyncLinkedList.h"
-
-TCPServer::TCPServer(size_t max_concurrency)
-{
-    thread_pool = new ThreadPool(max_concurrency);
-    open_conns = new SyncLinkedList();
-}
-
-TCPServer::~TCPServer()
+dlpf::net::tcp::server::~server()
 {
     close(sock_fd);
-    open_conns->~SyncLinkedList();
-    free(thread_pool);
 }
 
-void TCPServer::listen_and_serve(size_t port, std::function<bool (int)> handler)
+void dlpf::net::tcp::server::listen_and_serve(size_t port, std::function<bool (int)> handler)
 {
     // Step 1: Set up socket
     sock_fd = socket(AF_INET, SOCK_STREAM, 0); // Create socket file descriptor for server
@@ -51,7 +40,7 @@ void TCPServer::listen_and_serve(size_t port, std::function<bool (int)> handler)
                 maxfd = data;
             return true;
         };
-        open_conns->for_each(iter_full); // iterate through entire list
+        open_conns.for_each(iter_full); // iterate through entire list
 
         if (sock_fd > maxfd)
             maxfd = sock_fd;
@@ -70,7 +59,7 @@ void TCPServer::listen_and_serve(size_t port, std::function<bool (int)> handler)
 
 //Pre: sock_fd is the socket bound to this server
 //Post: accept connection and add file descriptor of connected client to open_conns
-void TCPServer::accept_connection()
+void dlpf::net::tcp::server::accept_connection()
 {
     // Step 4: Accecpt
     struct sockaddr_in remote_host; // a pointer to a sockaddr struct that will be filled in with the address information of the remote host
@@ -80,14 +69,14 @@ void TCPServer::accept_connection()
     if (remotefd < 0)
         error("ERROR accepting request");
     std::cout << "Connection Accecpted" << std::endl;
-    open_conns->push(remotefd);
+    open_conns.push(remotefd);
 }
 
 //Pre: open_conns contains fd that is also in with read_fds
 //Post: determine which fd has been updated and echo data
-void TCPServer::handle_connection(fd_set read_fds, std::function<bool (int)> handler)
+void dlpf::net::tcp::server::handle_connection(fd_set read_fds, std::function<bool (int)> handler)
 {
-    int fd;
+    int fd = -1;
     std::function<bool (node *)> iter_search = [read_fds, &fd] (node *cur){
         if (FD_ISSET(cur->data, &read_fds)) { // check if file descriptor is ready to be read from
             fd = cur->data;
@@ -95,27 +84,24 @@ void TCPServer::handle_connection(fd_set read_fds, std::function<bool (int)> han
         }
         return true;
     };
-    open_conns->for_each(iter_search);  // iterate through fdlist
+    open_conns.for_each(iter_search);  // iterate through fdlist
 
-    if(!fd)
+    if(fd < 0)
         error("Connection not in list");
 
     std::cout << "Handeling Received Data" << std::endl;
 
-    open_conns->remove(fd); //avoid race conditon of fd being checked against twice if handler is a slow enough funtion
-    bool add_back = false;
-    thread_pool->enqueue([fd, handler, &add_back]
+    open_conns.remove(fd); //avoid race conditon of fd being checked against twice if handler is a slow enough funtion
+    thread_pool.enqueue([fd, handler, this]
     {
         if(handler(fd))
             close(fd);
         else
-            add_back = true;
+            open_conns.push(fd); // re-add to continue connection
     });
-    if (add_back) 
-        open_conns->push(fd);
 }
 
-void TCPServer::error(const char *msg)
+void dlpf::net::tcp::server::error(const char *msg)
 {
     perror(msg);
     exit(0);
