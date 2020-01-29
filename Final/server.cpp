@@ -47,7 +47,7 @@ void dlpf::net::tcp::server::listen_and_serve(size_t port, std::function<bool (i
 
         std::cout << "Attempting to Select . . ." << std::endl;
         if (select(maxfd + 1, &read_fds, NULL, NULL, NULL) < 0) // sleeps until there is an available connection and then determines if it must be accepted or read from
-            error("My error message");
+            error("ERROR Selection Failed");
         std::cout << "Connection Selected" << std::endl;
 
         if (FD_ISSET(sock_fd, &read_fds))
@@ -87,7 +87,7 @@ void dlpf::net::tcp::server::handle_connection(fd_set read_fds, std::function<bo
     open_conns.for_each(iter_search);  // iterate through fdlist
 
     if(fd < 0)
-        error("Connection not in list");
+        error("ERROR Connection not in list");
 
     std::cout << "Handeling Received Data" << std::endl;
 
