@@ -1,14 +1,14 @@
-#include "server.h"
+#include "tcp_server.h"
 
-dlpf::net::tcp::server::~server()
+dlpf::net::tcp::tcp_server::~tcp_server()
 {
     close(sock_fd);
 }
 
-void dlpf::net::tcp::server::listen_and_serve(size_t port, std::function<bool (int)> handler)
+void dlpf::net::tcp::tcp_server::listen_and_serve(size_t port, std::function<bool (int)> handler)
 {
     // Step 1: Set up socket
-    sock_fd = socket(AF_INET, SOCK_STREAM, 0); // Create socket file descriptor for server
+    sock_fd = socket(AF_INET, SOCK_STREAM, 0); // Create socket file descriptor for tcp_server
     if (sock_fd < 0)
         error("ERROR opening socket");
 
@@ -57,9 +57,9 @@ void dlpf::net::tcp::server::listen_and_serve(size_t port, std::function<bool (i
     }
 }
 
-//Pre: sock_fd is the socket bound to this server
+//Pre: sock_fd is the socket bound to this tcp_server
 //Post: accept connection and add file descriptor of connected client to open_conns
-void dlpf::net::tcp::server::accept_connection()
+void dlpf::net::tcp::tcp_server::accept_connection()
 {
     // Step 4: Accecpt
     struct sockaddr_in remote_host; // a pointer to a sockaddr struct that will be filled in with the address information of the remote host
@@ -74,7 +74,7 @@ void dlpf::net::tcp::server::accept_connection()
 
 //Pre: open_conns contains fd that is also in with read_fds
 //Post: determine which fd has been updated and echo data
-void dlpf::net::tcp::server::handle_connection(fd_set read_fds, std::function<bool (int)> handler)
+void dlpf::net::tcp::tcp_server::handle_connection(fd_set read_fds, std::function<bool (int)> handler)
 {
     int fd = -1;
     std::function<bool (dlpf::sync::node *)> iter_search = [read_fds, &fd] (dlpf::sync::node *cur){
@@ -101,7 +101,7 @@ void dlpf::net::tcp::server::handle_connection(fd_set read_fds, std::function<bo
     });
 }
 
-void dlpf::net::tcp::server::error(const char *msg)
+void dlpf::net::tcp::tcp_server::error(const char *msg)
 {
     perror(msg);
     exit(0);

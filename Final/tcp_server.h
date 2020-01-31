@@ -26,12 +26,12 @@ namespace dlpf {
 
 
 namespace dlpf::net::tcp {
-  class server {
+  class tcp_server {
     public:
       // Constructor
-      server(size_t max_concurrency):thread_pool(max_concurrency), open_conns(){};
+      tcp_server(size_t max_concurrency):thread_pool(max_concurrency), open_conns(){};
       // Destructor
-      ~server();
+      ~tcp_server();
 
       // This is a blocking call that listens for connections on the given port and
       // serves them using the provided handler. The handler should return true
