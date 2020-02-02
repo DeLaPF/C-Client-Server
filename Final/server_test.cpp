@@ -10,7 +10,6 @@ void error(const char *msg)
 //Post: return exact data back to client
 bool echo_handler(int fd)
 {
-    // Step 5: Echo
     char buffer[256]; // create buffer of 256 chars
     bzero(buffer, 256); // zero out all values in buffer
     int recvd = recv(fd, buffer, 255, 0); // receive data from fd and put it in buffer
@@ -26,7 +25,6 @@ bool echo_handler(int fd)
 //Post: display html to client's browser in accordance with the client's request
 bool http_handler(int fd)
 {
-    // Step 5: Echo
     char buffer[256]; // create buffer of 256 chars
     bzero(buffer, 256); // zero out all values in buffer
     int recvd = recv(fd, buffer, 255, 0); // receive data from fd and put it in buffer

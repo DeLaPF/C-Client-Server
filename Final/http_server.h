@@ -3,6 +3,8 @@
 
 #include "tcp_server.h"
 #include <string.h>
+#include <unordered_map>
+#include <functional>
 
 namespace dlpf::http
 {
@@ -34,6 +36,7 @@ namespace dlpf::http
         HTTPRequest parse_http_request(int fd);
         void write_response(int fd, const HTTPResponse &resp);
         void write_error(int fd);
+        void error(const char *msg);
     };
 } // dlpf::http
 #endif
